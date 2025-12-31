@@ -94,7 +94,7 @@ export default function Home() {
       <section className="max-w-5xl mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            Latest Bullshit <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">Updated every 8h</span>
+            Latest Bullshit <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">Updated daily</span>
           </h2>
         </div>
 
