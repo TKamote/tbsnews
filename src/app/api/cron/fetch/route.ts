@@ -17,6 +17,13 @@ export async function GET(req: NextRequest) {
   const errors: string[] = [];
 
   try {
+    if (!adminDb) {
+      return NextResponse.json({ 
+        error: 'Firebase Admin not configured',
+        message: 'Set FIREBASE_ADMIN_* environment variables to enable data fetching.'
+      }, { status: 503 });
+    }
+
     // 2. Fetch from all sources
     const [newsItems, xItems, redditItems] = await Promise.all([
       fetchTeslaNews(),
