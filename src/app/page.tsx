@@ -1,65 +1,128 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { Claim } from '@/types';
+import ClaimCard from '@/components/ClaimCard';
+import { Zap } from 'lucide-react';
 
 export default function Home() {
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchClaims() {
+      try {
+        if (!db) {
+          // Provide mock data for UI testing if Firebase is not configured
+          const mockData: Claim[] = [
+            {
+              id: '1',
+              title: "Elon Musk claims Cybertruck can serve as a boat for short distances",
+              description: "In a recent tweet, Musk suggested that the Cybertruck is waterproof enough to cross rivers, lakes & even seas that aren't too choppy.",
+              url: "https://x.com/elonmusk",
+              source: 'x',
+              sourceName: 'X (Twitter)',
+              ridiculousnessScore: 8,
+              aiReasoning: "While impressive, treating a consumer truck as a boat has significant safety and regulatory hurdles.",
+              tags: ['cybertruck', 'elon'],
+              publishedAt: new Date(),
+              fetchedAt: new Date(),
+            },
+            {
+              id: '2',
+              title: "Tesla to launch 'Model Pi' smartphone with Starlink connectivity",
+              description: "Rumors circulate about a revolutionary Tesla phone that can work on Mars and features solar charging.",
+              url: "https://reddit.com",
+              source: 'reddit',
+              sourceName: 'r/TeslaMotors',
+              ridiculousnessScore: 9,
+              aiReasoning: "This is a recurring internet myth with no official confirmation from Tesla or SpaceX.",
+              tags: ['tech', 'rumor'],
+              publishedAt: new Date(),
+              fetchedAt: new Date(),
+            }
+          ];
+          setClaims(mockData);
+          setLoading(false);
+          return;
+        }
+
+        const q = query(
+          collection(db, 'claims'),
+          orderBy('ridiculousnessScore', 'desc'),
+          limit(20)
+        );
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Handle Firestore timestamps
+          publishedAt: doc.data().publishedAt?.toDate(),
+          fetchedAt: doc.data().fetchedAt?.toDate(),
+        })) as Claim[];
+        setClaims(data);
+      } catch (error) {
+        console.error("Error fetching claims:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchClaims();
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen bg-slate-50">
+      {/* Hero Section */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+          <div className="inline-flex items-center justify-center p-2 bg-blue-50 rounded-2xl mb-6">
+            <Zap className="w-6 h-6 text-blue-600 fill-blue-600" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
+            Mr Tesla <span className="text-blue-600">Bullshit</span> Detector
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Aggregating and scoring the internet's most outrageous, exaggerated, and false claims about Tesla and Elon Musk.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Feed Section */}
+      <section className="max-w-5xl mx-auto px-4 py-12">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            Latest Bullshit <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">Updated every 8h</span>
+          </h2>
         </div>
-      </main>
-    </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : claims.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {claims.map(claim => (
+              <ClaimCard key={claim.id} claim={claim} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+            <p className="text-slate-500">No ridiculousness detected yet. Check back in a bit!</p>
+          </div>
+        )}
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-white py-12">
+        <div className="max-w-5xl mx-auto px-4 text-center">
+          <p className="text-sm text-slate-400">
+            Powered by Gemini AI. For entertainment purposes only. 
+          </p>
+        </div>
+      </footer>
+    </main>
   );
 }
