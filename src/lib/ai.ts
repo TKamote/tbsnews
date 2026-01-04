@@ -6,6 +6,45 @@ export interface ScoringResult {
   tags: string[];
 }
 
+// Check if news is relevant to Tesla/Elon before scoring
+export async function isRelevantToTesla(title: string, description: string): Promise<boolean> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    // If no API key, do basic keyword check
+    const text = `${title} ${description}`.toLowerCase();
+    const keywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink', 'neuralink', 'boring company'];
+    return keywords.some(keyword => text.includes(keyword));
+  }
+
+  const prompt = `Is this news article directly related to Tesla, Elon Musk, SpaceX, or their companies? Answer with only "yes" or "no".
+
+Title: "${title}"
+Description: "${description}"`;
+
+  try {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 10,
+        }
+      },
+      { timeout: 10000 }
+    );
+
+    const resultText = response.data.candidates[0].content.parts[0].text.toLowerCase().trim();
+    return resultText.includes('yes');
+  } catch (error) {
+    console.error("Relevance check error:", error);
+    // Fallback to keyword check
+    const text = `${title} ${description}`.toLowerCase();
+    const keywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink'];
+    return keywords.some(keyword => text.includes(keyword));
+  }
+}
+
 export async function scoreClaim(title: string, snippet: string): Promise<ScoringResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -17,25 +56,23 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
     };
   }
 
-  const prompt = `
-    You are a BS detector for Tesla and Elon Musk news. 
-    Analyze this news claim and score its "ridiculousness" or "absurdity" on a scale of 1-10.
-    1 = Boring, factual, verified corporate news.
-    5 = Sensationalized, clickbaity, or exaggerated.
-    10 = Completely absurd, false, or wildly speculative bullshit.
+  const prompt = `You are a BS detector for Tesla and Elon Musk news. 
+Analyze this news claim and score its "ridiculousness" or "absurdity" on a scale of 1-10.
+1 = Boring, factual, verified corporate news.
+5 = Sensationalized, clickbaity, or exaggerated.
+10 = Completely absurd, false, or wildly speculative bullshit.
 
-    Title: "${title}"
-    Snippet: "${snippet}"
+Title: "${title}"
+Snippet: "${snippet}"
 
-    Respond ONLY with JSON in this format:
-    {
-      "bullshitScore": <number 1-10>,
-      "reasoning": "<1 sentence explanation of why it is ridiculous>",
-      "tags": ["<tag1>", "<tag2>"]
-    }
-    
-    Limit tags to 2-3 items like: cybertruck, stock, fsd, elon, space, etc.
-  `;
+Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
+{
+  "bullshitScore": <number 1-10>,
+  "reasoning": "<1-2 sentence explanation of why it is ridiculous or not>",
+  "tags": ["<tag1>", "<tag2>"]
+}
+
+Limit tags to 2-3 items like: cybertruck, stock, fsd, elon, spacex, starlink, model3, modely, autopilot, etc.`;
 
   try {
     const response = await axios.post(
@@ -44,11 +81,21 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           response_mime_type: "application/json",
+          temperature: 0.3,
         }
-      }
+      },
+      { timeout: 30000 }
     );
 
-    const resultText = response.data.candidates[0].content.parts[0].text;
+    if (!response.data.candidates || !response.data.candidates[0]?.content?.parts?.[0]?.text) {
+      throw new Error('Invalid response from Gemini API');
+    }
+
+    let resultText = response.data.candidates[0].content.parts[0].text;
+    
+    // Clean up JSON if wrapped in markdown
+    resultText = resultText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
     const parsed = JSON.parse(resultText);
 
     return {
@@ -56,11 +103,12 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
       reasoning: parsed.reasoning || "No reasoning provided.",
       tags: parsed.tags || []
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Scoring Error:", error);
+    console.error("Error details:", error.response?.data || error.message);
     return {
       bullshitScore: 5,
-      reasoning: "Error analyzing with AI.",
+      reasoning: `Error analyzing with AI: ${error.message || 'Unknown error'}`,
       tags: ["error"]
     };
   }

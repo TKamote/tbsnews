@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { fetchTeslaNews, fetchXPosts, fetchRedditPosts } from '@/lib/fetchers';
-import { scoreClaim } from '@/lib/ai';
+import { scoreClaim, isRelevantToTesla } from '@/lib/ai';
 import * as admin from 'firebase-admin';
 
 export async function POST(req: NextRequest) {
@@ -12,9 +12,15 @@ export async function POST(req: NextRequest) {
 
   try {
     if (!adminDb) {
+      const missingVars = [];
+      if (!process.env.FIREBASE_ADMIN_PROJECT_ID) missingVars.push('FIREBASE_ADMIN_PROJECT_ID');
+      if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) missingVars.push('FIREBASE_ADMIN_CLIENT_EMAIL');
+      if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) missingVars.push('FIREBASE_ADMIN_PRIVATE_KEY');
+      
       return NextResponse.json({ 
         error: 'Firebase Admin not configured',
-        message: 'Set FIREBASE_ADMIN_* environment variables to enable data fetching.'
+        message: `Missing environment variables: ${missingVars.join(', ')}`,
+        details: 'Set FIREBASE_ADMIN_* environment variables in Vercel to enable data fetching.'
       }, { status: 503 });
     }
 
@@ -42,19 +48,36 @@ export async function POST(req: NextRequest) {
     for (const item of combinedItems) {
       try {
         // Check if URL already exists in DB
-        const existing = await adminDb.collection('claims')
-          .where('url', '==', item.url)
-          .limit(1)
-          .get();
+        let existing;
+        try {
+          existing = await adminDb.collection('claims')
+            .where('url', '==', item.url)
+            .limit(1)
+            .get();
+        } catch (queryErr: any) {
+          console.error('Error querying claims:', queryErr);
+          errors.push(`Query error for ${item.title}: ${queryErr.message}`);
+          continue;
+        }
 
         if (!existing.empty) continue;
 
+        // Check relevance first - skip if not about Tesla/Elon
+        const isRelevant = await isRelevantToTesla(item.title, item.description);
+        if (!isRelevant) {
+          console.log(`Skipping irrelevant item: ${item.title}`);
+          continue;
+        }
+
         // Score with AI
+        console.log(`Scoring: ${item.title}`);
         const scoring = await scoreClaim(item.title, item.description);
+        console.log(`Scored: ${item.title} - Score: ${scoring.bullshitScore}`);
 
         // Save if ridiculous (Score >= 3)
         if (scoring.bullshitScore >= 3) {
-          await adminDb.collection('claims').add({
+          try {
+            await adminDb.collection('claims').add({
             title: item.title,
             description: item.description,
             url: item.url,
@@ -67,10 +90,14 @@ export async function POST(req: NextRequest) {
             fetchedAt: admin.firestore.Timestamp.now(),
           });
           itemsProcessed++;
+          } catch (writeErr: any) {
+            console.error(`Error writing claim: ${item.title}`, writeErr);
+            errors.push(`Write error for ${item.title}: ${writeErr.message} (Code: ${writeErr.code})`);
+          }
         }
       } catch (err: any) {
         console.error(`Error processing item: ${item.title}`, err);
-        errors.push(`${item.title}: ${err.message}`);
+        errors.push(`${item.title}: ${err.message} (Code: ${err.code || 'unknown'})`);
       }
     }
 

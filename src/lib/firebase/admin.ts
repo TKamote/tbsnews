@@ -7,16 +7,25 @@ const isFirebaseAdminConfigured =
 
 if (!admin.apps.length && isFirebaseAdminConfigured) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    
+    if (!privateKey || !privateKey.includes('BEGIN PRIVATE KEY')) {
+      console.error('FIREBASE_ADMIN_PRIVATE_KEY is invalid or missing');
+    } else {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+          privateKey: privateKey,
+        }),
+      });
+      console.log('Firebase Admin initialized successfully');
+    }
   } catch (error) {
-    console.error('Firebase admin initialization error', error);
+    console.error('Firebase admin initialization error:', error);
   }
+} else if (!isFirebaseAdminConfigured) {
+  console.warn('Firebase Admin not configured - missing environment variables');
 }
 
 export const adminDb = admin.apps.length ? admin.firestore() : null;

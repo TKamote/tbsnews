@@ -18,24 +18,33 @@ export async function fetchTeslaNews(): Promise<RawNewsItem[]> {
 
   try {
     // Fetch news from NewsAPI.org (free tier allows 100 requests per day)
+    // More specific search to filter out irrelevant news
     const response = await axios.get('https://newsapi.org/v2/everything', {
       params: {
-        q: 'Tesla OR "Elon Musk" OR Cybertruck',
+        q: '(Tesla OR "Elon Musk" OR "Elon" OR Cybertruck OR "Model 3" OR "Model Y" OR "Model S" OR "Model X" OR "Full Self Driving" OR FSD OR SpaceX OR Starlink OR Neuralink OR Boring Company) AND NOT (general electric OR "GE" OR "Nikola" OR "Rivian")',
         language: 'en',
         sortBy: 'publishedAt',
-        pageSize: 10, // Keep it small for the 8h cycle
+        pageSize: 20, // Get more to filter better
         apiKey: apiKey,
       }
     });
 
-    return response.data.articles.map((a: any) => ({
-      title: a.title,
-      description: a.description || a.title,
-      url: a.url,
-      source: a.source.name,
-      publishedAt: a.publishedAt,
-      type: 'news' as const,
-    }));
+    // Filter articles to ensure they're actually about Tesla/Elon
+    const teslaKeywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink', 'neuralink', 'boring company'];
+    
+    return response.data.articles
+      .filter((a: any) => {
+        const text = `${a.title} ${a.description || ''}`.toLowerCase();
+        return teslaKeywords.some(keyword => text.includes(keyword));
+      })
+      .map((a: any) => ({
+        title: a.title,
+        description: a.description || a.title,
+        url: a.url,
+        source: a.source.name,
+        publishedAt: a.publishedAt,
+        type: 'news' as const,
+      }));
   } catch (error) {
     console.error("News Fetch Error:", error);
     return [];

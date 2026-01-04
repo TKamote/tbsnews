@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { fetchTeslaNews, fetchXPosts, fetchRedditPosts } from '@/lib/fetchers';
-import { scoreClaim } from '@/lib/ai';
+import { scoreClaim, isRelevantToTesla } from '@/lib/ai';
 import * as admin from 'firebase-admin';
 
 export async function GET(req: NextRequest) {
@@ -48,6 +48,13 @@ export async function GET(req: NextRequest) {
           .get();
 
         if (!existing.empty) continue;
+
+        // 3.5. Check relevance first - skip if not about Tesla/Elon
+        const isRelevant = await isRelevantToTesla(item.title, item.description);
+        if (!isRelevant) {
+          console.log(`Skipping irrelevant item: ${item.title}`);
+          continue;
+        }
 
         // 4. Score with AI
         const scoring = await scoreClaim(item.title, item.description);
