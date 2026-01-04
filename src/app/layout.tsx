@@ -16,9 +16,11 @@ export const metadata: Metadata = {
   title: "Mr Tesla Bullshit Detector",
   description: "The most ridiculous Tesla and Elon Musk news, scored by AI.",
   icons: {
-    icon: '/TBS-Logo copy.PNG',
-    shortcut: '/TBS-Logo copy.PNG',
-    apple: '/TBS-Logo copy.PNG',
+    icon: [
+      { url: '/TBS-Logo%20copy.PNG', type: 'image/png' },
+    ],
+    shortcut: '/TBS-Logo%20copy.PNG',
+    apple: '/TBS-Logo%20copy.PNG',
   },
 };
 

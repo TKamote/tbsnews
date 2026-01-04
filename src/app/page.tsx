@@ -186,7 +186,7 @@ export default function Home() {
               <img
                 src="/TBS-Logo copy.PNG"
                 alt="TBS Logo"
-                className="object-contain h-16 w-auto"
+                className="object-contain h-16 w-16 rounded-full"
                 style={{ maxWidth: '200px' }}
               />
             </div>

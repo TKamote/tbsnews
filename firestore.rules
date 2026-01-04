@@ -2,12 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Claims collection - public read, server-only write
+    // Claims collection - public read, server writes via Admin SDK
+    // Note: Admin SDK bypasses these rules, but we keep them for client-side protection
     match /claims/{claimId} {
       // Anyone can read claims (public feed)
       allow read: if true;
       
-      // Only server can write (via Firebase Admin SDK)
+      // Admin SDK writes bypass rules, but we block client writes for security
       allow write: if false;
     }
     
@@ -17,12 +18,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Fetch logs - authenticated users can read, server-only write
+    // Fetch logs - public read for "last updated", server writes via Admin SDK
     match /fetchLogs/{logId} {
-      // Authenticated users can read logs (for "last updated" display)
-      allow read: if request.auth != null;
+      // Anyone can read logs (for "last updated" display on homepage)
+      allow read: if true;
       
-      // Only server can write (via Firebase Admin SDK)
+      // Admin SDK writes bypass rules, but we block client writes for security
       allow write: if false;
     }
   }

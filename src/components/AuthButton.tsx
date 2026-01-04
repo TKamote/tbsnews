@@ -62,23 +62,33 @@ export default function AuthButton() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Allow sign in even if email not verified, but show a warning
       if (!userCredential.user.emailVerified) {
-        setError('Please verify your email before signing in. Check your inbox for the verification link.');
-        await signOut(auth);
-        return;
+        setSuccess('Signed in successfully! Please verify your email to access all features.');
+        // Send verification email if not already sent
+        try {
+          await sendEmailVerification(userCredential.user);
+        } catch (verifyErr) {
+          console.error('Error sending verification:', verifyErr);
+        }
       }
       setEmail('');
       setPassword('');
       setShowAuthForm(false);
     } catch (err: any) {
+      console.error('Sign in error:', err);
       if (err.code === 'auth/user-not-found') {
         setError('No account found with this email. Sign up instead?');
       } else if (err.code === 'auth/wrong-password') {
         setError('Incorrect password. Forgot your password?');
       } else if (err.code === 'auth/invalid-email') {
         setError('Invalid email address.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please try again later or reset your password.');
+      } else if (err.code === 'auth/user-disabled') {
+        setError('This account has been disabled. Please contact support.');
       } else {
-        setError(err.message || 'Sign in failed');
+        setError(err.message || `Sign in failed: ${err.code || 'Unknown error'}`);
       }
     }
   };
