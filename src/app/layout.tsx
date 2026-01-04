@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mr Tesla Bullshit Detector",
   description: "The most ridiculous Tesla and Elon Musk news, scored by AI.",
+  icons: {
+    icon: '/TBS-Logo.PNG',
+    shortcut: '/TBS-Logo.PNG',
+    apple: '/TBS-Logo.PNG',
+  },
 };
 
 export default function RootLayout({

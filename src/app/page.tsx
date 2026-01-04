@@ -6,7 +6,8 @@ import { db } from '@/lib/firebase/client';
 import { Claim, FetchLog } from '@/types';
 import ClaimCard from '@/components/ClaimCard';
 import AuthButton from '@/components/AuthButton';
-import { Zap, Clock } from 'lucide-react';
+import { Clock, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 
 type ScoreFilter = 'all' | 'high' | 'medium' | 'low';
 
@@ -15,115 +16,159 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchStatus, setFetchStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  const fetchClaims = async () => {
+    try {
+      if (!db) {
+        // Provide mock data for UI testing if Firebase is not configured
+        const mockData: Claim[] = [
+          {
+            id: '1',
+            title: "Elon Musk claims Cybertruck can serve as a boat for short distances",
+            description: "In a recent tweet, Musk suggested that the Cybertruck is waterproof enough to cross rivers, lakes & even seas that aren't too choppy.",
+            url: "https://x.com/elonmusk",
+            source: 'x',
+            sourceName: 'X (Twitter)',
+            bullshitScore: 8,
+            aiReasoning: "While impressive, treating a consumer truck as a boat has significant safety and regulatory hurdles.",
+            tags: ['cybertruck', 'elon'],
+            publishedAt: new Date(),
+            fetchedAt: new Date(),
+          },
+          {
+            id: '2',
+            title: "Tesla to launch 'Model Pi' smartphone with Starlink connectivity",
+            description: "Rumors circulate about a revolutionary Tesla phone that can work on Mars and features solar charging.",
+            url: "https://reddit.com",
+            source: 'reddit',
+            sourceName: 'r/TeslaMotors',
+            bullshitScore: 9,
+            aiReasoning: "This is a recurring internet myth with no official confirmation from Tesla or SpaceX.",
+            tags: ['tech', 'rumor'],
+            publishedAt: new Date(),
+            fetchedAt: new Date(),
+          }
+        ];
+        setClaims(mockData);
+        setLoading(false);
+        return;
+      }
+
+      // Build query with score filter
+      let q = query(
+        collection(db, 'claims'),
+        orderBy('bullshitScore', 'desc')
+      );
+
+      // Apply score filter
+      if (scoreFilter === 'high') {
+        q = query(q, where('bullshitScore', '>=', 8));
+      } else if (scoreFilter === 'medium') {
+        q = query(q, where('bullshitScore', '>=', 5), where('bullshitScore', '<', 8));
+      } else if (scoreFilter === 'low') {
+        q = query(q, where('bullshitScore', '<', 5));
+      }
+
+      q = query(q, limit(20));
+
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        // Handle Firestore timestamps
+        publishedAt: doc.data().publishedAt?.toDate(),
+        fetchedAt: doc.data().fetchedAt?.toDate(),
+      })) as Claim[];
+      setClaims(data);
+    } catch (error) {
+      console.error("Error fetching claims:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchClaims() {
-      try {
-        if (!db) {
-          // Provide mock data for UI testing if Firebase is not configured
-          const mockData: Claim[] = [
-            {
-              id: '1',
-              title: "Elon Musk claims Cybertruck can serve as a boat for short distances",
-              description: "In a recent tweet, Musk suggested that the Cybertruck is waterproof enough to cross rivers, lakes & even seas that aren't too choppy.",
-              url: "https://x.com/elonmusk",
-              source: 'x',
-              sourceName: 'X (Twitter)',
-              bullshitScore: 8,
-              aiReasoning: "While impressive, treating a consumer truck as a boat has significant safety and regulatory hurdles.",
-              tags: ['cybertruck', 'elon'],
-              publishedAt: new Date(),
-              fetchedAt: new Date(),
-            },
-            {
-              id: '2',
-              title: "Tesla to launch 'Model Pi' smartphone with Starlink connectivity",
-              description: "Rumors circulate about a revolutionary Tesla phone that can work on Mars and features solar charging.",
-              url: "https://reddit.com",
-              source: 'reddit',
-              sourceName: 'r/TeslaMotors',
-              bullshitScore: 9,
-              aiReasoning: "This is a recurring internet myth with no official confirmation from Tesla or SpaceX.",
-              tags: ['tech', 'rumor'],
-              publishedAt: new Date(),
-              fetchedAt: new Date(),
-            }
-          ];
-          setClaims(mockData);
-          setLoading(false);
-          return;
-        }
 
-        // Build query with score filter
-        let q = query(
-          collection(db, 'claims'),
-          orderBy('bullshitScore', 'desc')
-        );
-
-        // Apply score filter
-        if (scoreFilter === 'high') {
-          q = query(q, where('bullshitScore', '>=', 8));
-        } else if (scoreFilter === 'medium') {
-          q = query(q, where('bullshitScore', '>=', 5), where('bullshitScore', '<', 8));
-        } else if (scoreFilter === 'low') {
-          q = query(q, where('bullshitScore', '<', 5));
-        }
-
-        q = query(q, limit(20));
-
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Handle Firestore timestamps
-          publishedAt: doc.data().publishedAt?.toDate(),
-          fetchedAt: doc.data().fetchedAt?.toDate(),
-        })) as Claim[];
-        setClaims(data);
-      } catch (error) {
-        console.error("Error fetching claims:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    async function fetchLastUpdated() {
-      if (!db) return;
+  const fetchLastUpdated = async () => {
+    if (!db) return;
+    
+    try {
+      const logsQuery = query(
+        collection(db, 'fetchLogs'),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      const snapshot = await getDocs(logsQuery);
       
-      try {
-        const logsQuery = query(
-          collection(db, 'fetchLogs'),
-          orderBy('timestamp', 'desc'),
-          limit(1)
-        );
-        const snapshot = await getDocs(logsQuery);
-        
-        if (!snapshot.empty) {
-          const log = snapshot.docs[0].data() as FetchLog;
-          const timestamp = log.timestamp?.toDate();
-          if (timestamp) {
-            const now = new Date();
-            const diffMs = now.getTime() - timestamp.getTime();
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            
-            if (diffHours > 0) {
-              setLastUpdated(`${diffHours}h ago`);
-            } else if (diffMins > 0) {
-              setLastUpdated(`${diffMins}m ago`);
-            } else {
-              setLastUpdated('Just now');
-            }
+      if (!snapshot.empty) {
+        const log = snapshot.docs[0].data() as FetchLog;
+        const timestamp = log.timestamp?.toDate();
+        if (timestamp) {
+          const now = new Date();
+          const diffMs = now.getTime() - timestamp.getTime();
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          if (diffHours > 0) {
+            setLastUpdated(`${diffHours}h ago`);
+          } else if (diffMins > 0) {
+            setLastUpdated(`${diffMins}m ago`);
+          } else {
+            setLastUpdated('Just now');
           }
         }
-      } catch (error) {
-        console.error("Error fetching last updated:", error);
       }
+    } catch (error) {
+      console.error("Error fetching last updated:", error);
     }
+  };
 
+  useEffect(() => {
     fetchClaims();
     fetchLastUpdated();
   }, [scoreFilter]);
+
+  const handleManualFetch = async () => {
+    setFetching(true);
+    setFetchStatus(null);
+    
+    try {
+      const response = await fetch('/api/fetch-now', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setFetchStatus({
+          success: true,
+          message: `Success! Fetched ${data.fetched} items, processed ${data.processed} new claims.`
+        });
+        
+        // Refresh the claims list after a short delay
+        setTimeout(() => {
+          fetchClaims();
+          fetchLastUpdated();
+        }, 2000);
+      } else {
+        setFetchStatus({
+          success: false,
+          message: data.error || data.message || 'Failed to fetch news'
+        });
+      }
+    } catch (error: any) {
+      setFetchStatus({
+        success: false,
+        message: error.message || 'Failed to fetch news'
+      });
+    } finally {
+      setFetching(false);
+      // Clear status after 5 seconds
+      setTimeout(() => setFetchStatus(null), 5000);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -135,9 +180,30 @@ export default function Home() {
             <AuthButton />
           </div>
           <div className="text-center">
-            <div className="inline-flex items-center justify-center p-2 bg-blue-50 rounded-2xl mb-6">
-              <Zap className="w-6 h-6 text-blue-600 fill-blue-600" />
+            {/* TBS Logo */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/TBS-Logo.PNG"
+                alt="TBS Logo"
+                width={120}
+                height={120}
+                className="object-contain"
+                priority
+              />
             </div>
+            
+            {/* Banner Image */}
+            <div className="mb-6 max-w-3xl mx-auto">
+              <Image
+                src="/TBS-YouTubeBanner&logo.png"
+                alt="TBS Banner"
+                width={1200}
+                height={200}
+                className="object-contain w-full h-auto rounded-lg"
+                priority
+              />
+            </div>
+            
             <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
               Mr Tesla <span className="text-blue-600">Bullshit</span> Detector
             </h1>
@@ -151,7 +217,7 @@ export default function Home() {
       {/* Feed Section */}
       <section className="max-w-5xl mx-auto px-4 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-xl font-bold text-slate-800">
               Latest Bullshit
             </h2>
@@ -161,6 +227,16 @@ export default function Home() {
                 <span>Updated {lastUpdated}</span>
               </div>
             )}
+            
+            {/* Manual Fetch Button */}
+            <button
+              onClick={handleManualFetch}
+              disabled={fetching}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
+              {fetching ? 'Fetching...' : 'Fetch News Now'}
+            </button>
           </div>
 
           {/* Score Filter Buttons */}
@@ -207,6 +283,24 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {/* Fetch Status Message */}
+        {fetchStatus && (
+          <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
+            fetchStatus.success 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            {fetchStatus.success ? (
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            )}
+            <p className={`text-sm ${fetchStatus.success ? 'text-green-800' : 'text-red-800'}`}>
+              {fetchStatus.message}
+            </p>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20">
