@@ -184,7 +184,7 @@ export default function Home() {
             {/* Logo - Top Left */}
             <div className="flex-shrink-0">
               <img
-                src="/TBS-Logo.png"
+                src="/TBS-Logo.PNG"
                 alt="TBS Logo"
                 className="object-contain h-16 w-16 rounded-full"
                 style={{ maxWidth: '200px' }}

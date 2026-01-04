@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   description: "The most ridiculous Tesla and Elon Musk news, scored by AI.",
   icons: {
     icon: [
-      { url: '/TBS-Logo.png', type: 'image/png' },
+      { url: '/TBS-Logo.PNG', type: 'image/png' },
     ],
-    shortcut: '/TBS-Logo.png',
-    apple: '/TBS-Logo.png',
+    shortcut: '/TBS-Logo.PNG',
+    apple: '/TBS-Logo.PNG',
   },
 };
 
