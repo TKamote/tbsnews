@@ -53,14 +53,14 @@ export async function GET(req: NextRequest) {
         const scoring = await scoreClaim(item.title, item.description);
 
         // 5. Save if ridiculous (Score >= 3)
-        if (scoring.ridiculousnessScore >= 3) {
+        if (scoring.bullshitScore >= 3) {
           await adminDb.collection('claims').add({
             title: item.title,
             description: item.description,
             url: item.url,
             source: item.type, // 'news' | 'x' | 'reddit'
             sourceName: item.source,
-            ridiculousnessScore: scoring.ridiculousnessScore,
+            bullshitScore: scoring.bullshitScore,
             aiReasoning: scoring.reasoning,
             tags: scoring.tags,
             publishedAt: admin.firestore.Timestamp.fromDate(new Date(item.publishedAt)),

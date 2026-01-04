@@ -6,7 +6,7 @@ export interface Claim {
   source: 'news' | 'x' | 'reddit';
   
   // Metrics
-  ridiculousnessScore: number;  // 1-10 from AI
+  bullshitScore: number;  // 1-10 from AI
   
   // AI Analysis
   aiReasoning: string;  // Why this score?

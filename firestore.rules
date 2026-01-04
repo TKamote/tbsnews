@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Claims collection - public read, server-only write
+    match /claims/{claimId} {
+      // Anyone can read claims (public feed)
+      allow read: if true;
+      
+      // Only server can write (via Firebase Admin SDK)
+      allow write: if false;
+    }
+    
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      // Users can read and write their own user document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Fetch logs - authenticated users can read, server-only write
+    match /fetchLogs/{logId} {
+      // Authenticated users can read logs (for "last updated" display)
+      allow read: if request.auth != null;
+      
+      // Only server can write (via Firebase Admin SDK)
+      allow write: if false;
+    }
+  }
+}
+

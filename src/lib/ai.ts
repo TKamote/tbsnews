@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export interface ScoringResult {
-  ridiculousnessScore: number;
+  bullshitScore: number;
   reasoning: string;
   tags: string[];
 }
@@ -11,7 +11,7 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
   if (!apiKey) {
     console.warn('GEMINI_API_KEY is missing, using default score');
     return {
-      ridiculousnessScore: 5,
+      bullshitScore: 5,
       reasoning: "AI scoring unavailable (API key missing)",
       tags: ["unscored"]
     };
@@ -29,7 +29,7 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
 
     Respond ONLY with JSON in this format:
     {
-      "ridiculousnessScore": <number 1-10>,
+      "bullshitScore": <number 1-10>,
       "reasoning": "<1 sentence explanation of why it is ridiculous>",
       "tags": ["<tag1>", "<tag2>"]
     }
@@ -52,14 +52,14 @@ export async function scoreClaim(title: string, snippet: string): Promise<Scorin
     const parsed = JSON.parse(resultText);
 
     return {
-      ridiculousnessScore: Math.min(10, Math.max(1, parsed.ridiculousnessScore || 5)),
+      bullshitScore: Math.min(10, Math.max(1, parsed.bullshitScore || 5)),
       reasoning: parsed.reasoning || "No reasoning provided.",
       tags: parsed.tags || []
     };
   } catch (error) {
     console.error("AI Scoring Error:", error);
     return {
-      ridiculousnessScore: 5,
+      bullshitScore: 5,
       reasoning: "Error analyzing with AI.",
       tags: ["error"]
     };

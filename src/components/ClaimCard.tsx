@@ -27,8 +27,8 @@ export default function ClaimCard({ claim }: ClaimCardProps) {
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500 uppercase tracking-wider">
             <span className="bg-slate-100 px-2 py-0.5 rounded">{claim.sourceName || claim.source}</span>
           </div>
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full border text-sm font-bold ${getScoreColor(claim.ridiculousnessScore)}`}>
-            {getEmoji(claim.ridiculousnessScore)} {claim.ridiculousnessScore}/10
+          <div className={`flex items-center gap-1 px-3 py-1 rounded-full border text-sm font-bold ${getScoreColor(claim.bullshitScore)}`}>
+            {getEmoji(claim.bullshitScore)} {claim.bullshitScore}/10
           </div>
         </div>
 
