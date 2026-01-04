@@ -181,13 +181,13 @@ export default function Home() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
-            {/* Banner Image - Top Left */}
+            {/* Logo - Top Left */}
             <div className="flex-shrink-0">
               <img
-                src="/TBS-YouTubeBanner&logo.png"
-                alt="TBS Banner"
+                src="/TBS-Logo copy.PNG"
+                alt="TBS Logo"
                 className="object-contain h-16 w-auto"
-                style={{ maxWidth: '300px' }}
+                style={{ maxWidth: '200px' }}
               />
             </div>
             <AuthButton />
