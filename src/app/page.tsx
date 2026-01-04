@@ -89,8 +89,6 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-
   const fetchLastUpdated = async () => {
     if (!db) return;
     
