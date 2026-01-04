@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { Claim, FetchLog } from '@/types';
 import ClaimCard from '@/components/ClaimCard';
 import AuthButton from '@/components/AuthButton';
-import { Clock, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import Image from 'next/image';
 
 type ScoreFilter = 'all' | 'high' | 'medium' | 'low';
@@ -150,21 +150,28 @@ export default function Home() {
           fetchClaims();
           fetchLastUpdated();
         }, 2000);
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => setFetchStatus(null), 5000);
       } else {
+        const errorMsg = data.details 
+          ? `Error: ${data.error || 'Fatal error'}. ${data.details}` 
+          : data.error || data.message || 'Failed to fetch news';
         setFetchStatus({
           success: false,
-          message: data.error || data.message || 'Failed to fetch news'
+          message: errorMsg
         });
+        // Don't auto-dismiss errors - let user see them
       }
     } catch (error: any) {
+      const errorMsg = error.message || 'Failed to fetch news. Check console for details.';
       setFetchStatus({
         success: false,
-        message: error.message || 'Failed to fetch news'
+        message: `Network Error: ${errorMsg}`
       });
+      // Don't auto-dismiss errors
     } finally {
       setFetching(false);
-      // Clear status after 5 seconds
-      setTimeout(() => setFetchStatus(null), 5000);
     }
   };
 
@@ -172,36 +179,20 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50">
       {/* Hero Section */}
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex-1" />
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            {/* Banner Image - Top Left */}
+            <div className="flex-shrink-0">
+              <img
+                src="/TBS-YouTubeBanner&logo.png"
+                alt="TBS Banner"
+                className="object-contain h-16 w-auto"
+                style={{ maxWidth: '300px' }}
+              />
+            </div>
             <AuthButton />
           </div>
           <div className="text-center">
-            {/* TBS Logo */}
-            <div className="flex justify-center mb-6">
-              <Image
-                src="/TBS-Logo.PNG"
-                alt="TBS Logo"
-                width={120}
-                height={120}
-                className="object-contain"
-                priority
-              />
-            </div>
-            
-            {/* Banner Image */}
-            <div className="mb-6 max-w-3xl mx-auto">
-              <Image
-                src="/TBS-YouTubeBanner&logo.png"
-                alt="TBS Banner"
-                width={1200}
-                height={200}
-                className="object-contain w-full h-auto rounded-lg"
-                priority
-              />
-            </div>
-            
             <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
               Mr Tesla <span className="text-blue-600">Bullshit</span> Detector
             </h1>
@@ -284,7 +275,7 @@ export default function Home() {
 
         {/* Fetch Status Message */}
         {fetchStatus && (
-          <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
+          <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 relative ${
             fetchStatus.success 
               ? 'bg-green-50 border border-green-200' 
               : 'bg-red-50 border border-red-200'
@@ -294,9 +285,18 @@ export default function Home() {
             ) : (
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             )}
-            <p className={`text-sm ${fetchStatus.success ? 'text-green-800' : 'text-red-800'}`}>
-              {fetchStatus.message}
-            </p>
+            <div className="flex-1">
+              <p className={`text-sm ${fetchStatus.success ? 'text-green-800' : 'text-red-800'}`}>
+                {fetchStatus.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setFetchStatus(null)}
+              className={`flex-shrink-0 ${fetchStatus.success ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'} transition-colors`}
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
