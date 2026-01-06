@@ -8,12 +8,20 @@ export interface ScoringResult {
 
 // Check if news is relevant to Tesla/Elon before scoring
 export async function isRelevantToTesla(title: string, description: string): Promise<boolean> {
+  // Always do keyword check first (faster and free)
+  const text = `${title} ${description}`.toLowerCase();
+  const keywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink', 'neuralink', 'boring company', 'tesla stock', 'tsla'];
+  const hasKeyword = keywords.some(keyword => text.includes(keyword));
+  
+  // If keyword check passes, skip AI check to save API calls
+  if (hasKeyword) {
+    return true;
+  }
+
+  // Only use AI if keyword check fails (might be edge case)
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    // If no API key, do basic keyword check
-    const text = `${title} ${description}`.toLowerCase();
-    const keywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink', 'neuralink', 'boring company'];
-    return keywords.some(keyword => text.includes(keyword));
+    return false; // No keywords and no API key = not relevant
   }
 
   const prompt = `Is this news article directly related to Tesla, Elon Musk, SpaceX, or their companies? Answer with only "yes" or "no".
@@ -38,10 +46,8 @@ Description: "${description}"`;
     return resultText.includes('yes');
   } catch (error) {
     console.error("Relevance check error:", error);
-    // Fallback to keyword check
-    const text = `${title} ${description}`.toLowerCase();
-    const keywords = ['tesla', 'elon', 'musk', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'fsd', 'full self driving', 'spacex', 'starlink'];
-    return keywords.some(keyword => text.includes(keyword));
+    // If AI check fails, default to false (strict filtering)
+    return false;
   }
 }
 

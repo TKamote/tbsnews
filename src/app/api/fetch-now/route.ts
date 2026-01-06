@@ -34,10 +34,12 @@ export async function POST(req: NextRequest) {
     const combinedItems = [...newsItems, ...xItems, ...redditItems];
     itemsFetched = combinedItems.length;
 
+    console.log(`Fetched items: News=${newsItems.length}, X=${xItems.length}, Reddit=${redditItems.length}, Total=${itemsFetched}`);
+
     if (itemsFetched === 0) {
       return NextResponse.json({ 
         success: true,
-        message: 'No items found',
+        message: 'No items found from any source. Check API keys and source availability.',
         fetched: 0,
         processed: 0,
         duration: Date.now() - startTime
@@ -65,9 +67,11 @@ export async function POST(req: NextRequest) {
         // Check relevance first - skip if not about Tesla/Elon
         const isRelevant = await isRelevantToTesla(item.title, item.description);
         if (!isRelevant) {
-          console.log(`Skipping irrelevant item: ${item.title}`);
+          console.log(`Skipping irrelevant item: ${item.title.substring(0, 50)}...`);
           continue;
         }
+        
+        console.log(`Processing relevant item: ${item.title.substring(0, 50)}...`);
 
         // Score with AI
         console.log(`Scoring: ${item.title}`);
@@ -111,12 +115,20 @@ export async function POST(req: NextRequest) {
       duration,
     });
 
+    console.log(`Fetch complete: Fetched=${itemsFetched}, Processed=${itemsProcessed}, Errors=${errors.length}`);
+
     return NextResponse.json({
       success: true,
       fetched: itemsFetched,
       processed: itemsProcessed,
+      skipped: itemsFetched - itemsProcessed - errors.length,
       duration,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      message: itemsProcessed > 0 
+        ? `Successfully processed ${itemsProcessed} new claims`
+        : itemsFetched > 0 
+          ? `Fetched ${itemsFetched} items but none met criteria (already exist, not relevant, or score < 3)`
+          : 'No items found'
     });
 
   } catch (err: any) {

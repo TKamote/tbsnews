@@ -140,16 +140,20 @@ export default function Home() {
       const data = await response.json();
       
       if (data.success) {
+        const message = data.message || `Success! Fetched ${data.fetched} items, processed ${data.processed} new claims.`;
         setFetchStatus({
           success: true,
-          message: `Success! Fetched ${data.fetched} items, processed ${data.processed} new claims.`
+          message: message
         });
         
-        // Refresh the claims list after a short delay
+        // Refresh the claims list immediately and again after delay
+        fetchClaims();
+        fetchLastUpdated();
         setTimeout(() => {
+          setLoading(true);
           fetchClaims();
           fetchLastUpdated();
-        }, 2000);
+        }, 3000);
         
         // Clear success message after 5 seconds
         setTimeout(() => setFetchStatus(null), 5000);
